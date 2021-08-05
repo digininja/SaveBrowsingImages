@@ -5,20 +5,24 @@ from javax import swing
 from java.awt import BorderLayout
 
 class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, ITab):
-    filePathBase = "/home/robin/wolfrun"
+    filePathBase = "/home/robin/images"
+    imageMimeTypes = ["JPEG", "PNG", "GIF"]
 
     def saveData(self, e):
-        print e.getSource().getText() + " was clicked"
-        self._stdout.println(self.saveLocationInput.getText())
+        # self._stdout.println (e.getSource().getText() + " was clicked")
+        # self._stdout.println (self.saveLocationInput.getText())
 
         location = self.saveLocationInput.getText()
 
+        # force a / on the end if not provided
 
         if (location[len(location)-1] != "/"):
             location = location + "/"
         self._stdout.println("Saving files to: " + location)
 
         self.filePathBase = location
+
+        # need to persist here
 
     def initUI(self):
         self.tab = swing.JPanel()
@@ -79,9 +83,12 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
         # print extension name
         self._stdout.println(extName)
 
-        if (self.filePathBase[len(self.filePathBase)-1] != "/"):
-            self.filePathBase = self.filePathBase + "/"
+        # Need to load from storage
         self._stdout.println("Saving files to: " + self.filePathBase)
+
+        # Build list to compare against
+        # Need to load this from storage as well
+        self.imageMimeTypes = ["JPEG", "PNG", "GIF"]
 
         return
 
@@ -90,11 +97,9 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
             response = messageInfo.getResponse()
             responseInfo = self._helpers.analyzeResponse(response)
 
-            # Find out if image
+            # Get MIME types
             inferredMime = responseInfo.getInferredMimeType()
             statedMime = responseInfo.getStatedMimeType()
-            # Build list to compare against
-            imageMimeTypes = ["JPEG", "PNG", "GIF"]
 
             # Get response body
             bodyOffset = responseInfo.getBodyOffset()
@@ -106,7 +111,11 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
             self._stdout.println("Stated MIME Type: " + statedMime)
             self._stdout.println("Inferred MIME Type: " + inferredMime)
 
-            if (statedMime in imageMimeTypes) or (inferredMime in imageMimeTypes):
+            # If multiple files are loaded in the same second they will all get
+            # the same name and be overwritten so need to add something extra to 
+            # the name to ensure it is unique.
+
+            if (statedMime in self.imageMimeTypes) or (inferredMime in self.imageMimeTypes):
                 # Build file path
                 fileName = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
                 fileExtension = "." + inferredMime.lower()
