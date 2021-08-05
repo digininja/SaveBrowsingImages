@@ -7,8 +7,49 @@ from java.awt import BorderLayout
 class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, ITab):
     filePathBase = "/home/robin/wolfrun"
 
+    def saveData(self, e):
+        print e.getSource().getText() + " was clicked"
+        self._stdout.println(self.saveLocationInput.getText())
+
+        location = self.saveLocationInput.getText()
+
+
+        if (location[len(location)-1] != "/"):
+            location = location + "/"
+        self._stdout.println("Saving files to: " + location)
+
+        self.filePathBase = location
+
     def initUI(self):
         self.tab = swing.JPanel()
+
+        # Create the text area at the top of the tab
+        textPanel = swing.JPanel()
+
+        # Create the label for the text area
+        boxVertical = swing.Box.createVerticalBox()
+        boxHorizontal = swing.Box.createHorizontalBox()
+        textLabel = swing.JLabel("Save location")
+        boxHorizontal.add(textLabel)
+        boxVertical.add(boxHorizontal)
+
+        # Create the text area itself
+        boxHorizontal = swing.Box.createHorizontalBox()
+        self.saveLocationInput = swing.JTextField(100)
+        boxHorizontal.add(self.saveLocationInput)
+
+        # Save button
+        saveButton = swing.JButton("Save")
+        saveButton.addActionListener(self.saveData)
+        boxHorizontal.add(saveButton)
+
+        boxVertical.add(boxHorizontal)
+
+        # Add the text label and area to the text panel
+        textPanel.add(boxVertical)
+
+        # Add the text panel to the top of the main tab
+        self.tab.add(textPanel, BorderLayout.NORTH) 
 
     def getTabCaption(self):
         return "Save Browsing Images"
