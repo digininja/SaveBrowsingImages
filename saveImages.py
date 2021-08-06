@@ -22,7 +22,8 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
 
         self.filePathBase = location
 
-        # need to persist here
+        # Save the location
+        self._callbacks.saveExtensionSetting ("location", location)
 
     def initUI(self):
         self.tab = swing.JPanel()
@@ -83,12 +84,14 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
         # print extension name
         self._stdout.println(extName)
 
-        # Need to load from storage
-        self._stdout.println("Saving files to: " + self.filePathBase)
-
         # Build list to compare against
         # Need to load this from storage as well
         self.imageMimeTypes = ["JPEG", "PNG", "GIF"]
+
+        # Load the location from Burp storage
+        self.filePathBase = self._callbacks.loadExtensionSetting("location")
+
+        self._stdout.println("Saving files to: " + self.filePathBase)
 
         return
 
@@ -96,6 +99,17 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
         if (messageIsRequest == False):
             response = messageInfo.getResponse()
             responseInfo = self._helpers.analyzeResponse(response)
+
+            request = messageInfo.getRequest()
+            self._stdout.println(type(request))
+
+            #for header in request:
+          #      self._stdout.println(header)
+
+            #for header in request.getHeaders():
+            #    self._stdout.println(header)
+#
+ #           self._stdout.println(request)
 
             # Get MIME types
             inferredMime = responseInfo.getInferredMimeType()
