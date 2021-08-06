@@ -5,8 +5,12 @@ from javax import swing
 from java.awt import BorderLayout
 
 class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, ITab):
-    filePathBase = "/home/robin/images"
+    filePathBase = "/tmp"
     imageMimeTypes = ["JPEG", "PNG", "GIF"]
+
+    # Used to store the config in Burp
+    FILELOCATION = "location"
+    MIMETYPES = "mimetypes"
 
     def saveData(self, e):
         # self._stdout.println (e.getSource().getText() + " was clicked")
@@ -23,27 +27,37 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
         self.filePathBase = location
 
         # Save the location
-        self._callbacks.saveExtensionSetting ("location", location)
+        self._callbacks.saveExtensionSetting (self.FILELOCATION, location)
 
     def initUI(self):
         self.tab = swing.JPanel()
 
         # Create the text area at the top of the tab
         textPanel = swing.JPanel()
-
-        # Create the label for the text area
         boxVertical = swing.Box.createVerticalBox()
-        boxHorizontal = swing.Box.createHorizontalBox()
-        textLabel = swing.JLabel("Save location")
-        boxHorizontal.add(textLabel)
-        boxVertical.add(boxHorizontal)
 
-        # Create the text area itself
+        # Create the label for save location
         boxHorizontal = swing.Box.createHorizontalBox()
+        textLabel = swing.JLabel("Save location: ")
+        boxHorizontal.add(textLabel)
+
+        # Create save location input
         self.saveLocationInput = swing.JTextField(100)
         boxHorizontal.add(self.saveLocationInput)
+        boxVertical.add(boxHorizontal)
+
+        # Create the label for the mime type
+        boxHorizontal = swing.Box.createHorizontalBox()
+        textLabel = swing.JLabel("MIME Types - comma separated: ")
+        boxHorizontal.add(textLabel)
+
+        # Create MIME type input
+        self.mimeTypeInput = swing.JTextField(100)
+        boxHorizontal.add(self.mimeTypeInput)
+        boxVertical.add(boxHorizontal)
 
         # Save button
+        boxHorizontal = swing.Box.createHorizontalBox()
         saveButton = swing.JButton("Save")
         saveButton.addActionListener(self.saveData)
         boxHorizontal.add(saveButton)
@@ -57,13 +71,13 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
         self.tab.add(textPanel, BorderLayout.NORTH) 
 
     def getTabCaption(self):
-        return "Save Browsing Images"
+        return "Save Browsing Files"
 
     def getUiComponent(self):
         return self.tab
 
     def registerExtenderCallbacks( self, callbacks):
-        extName = "Save Images"
+        extName = "Save Files"
         # keep a reference to our callbacks object and add helpers
         self._callbacks = callbacks
         self._helpers = self._callbacks.getHelpers()
@@ -78,9 +92,6 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
         # register ourselves as a Proxy listener
         self._callbacks.registerHttpListener(self)
 
-        self.initUI()
-        self._callbacks.addSuiteTab(self)
-
         # print extension name
         self._stdout.println(extName)
 
@@ -89,9 +100,19 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
         self.imageMimeTypes = ["JPEG", "PNG", "GIF"]
 
         # Load the location from Burp storage
-        self.filePathBase = self._callbacks.loadExtensionSetting("location")
+        self.filePathBase = self._callbacks.loadExtensionSetting(self.FILELOCATION)
+
+        # Default to /tmp
+        # May be better to check the OS to make this decision, but sticking
+        # with this for now.
+        if self.filePathBase is None:
+            self.filePathBase = "/tmp/"
 
         self._stdout.println("Saving files to: " + self.filePathBase)
+
+        self.initUI()
+        self._callbacks.addSuiteTab(self)
+        self.saveLocationInput.setText(self.filePathBase)
 
         return
 
