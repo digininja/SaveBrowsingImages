@@ -1,12 +1,13 @@
-from burp import IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, ITab
+from burp import IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, ITab, ITextEditor
 from java.io import PrintWriter
 from datetime import datetime
 from javax import swing
 from java.awt import BorderLayout
+from ast import literal_eval
 
-class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, ITab):
+class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, ITab, ITextEditor):
     filePathBase = "/tmp"
-    imageMimeTypes = ["JPEG", "PNG", "GIF"]
+    fileMimeTypes = ["JPEG", "PNG", "GIF"]
 
     # Used to store the config in Burp
     FILELOCATION = "location"
@@ -26,8 +27,17 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
 
         self.filePathBase = location
 
+        text = self.mimeTypesInput.getText()
+        upper = text.upper()
+        mimeTypesToList = upper.split(",")
+        self._stdout.println(mimeTypesToList)
+        self.fileMimeTypes = mimeTypesToList
+
+        self._stdout.println("Matching MIME Types: " + repr(mimeTypesToList))
+
         # Save the location
         self._callbacks.saveExtensionSetting (self.FILELOCATION, location)
+        self._callbacks.saveExtensionSetting (self.MIMETYPES, repr(self.fileMimeTypes))
 
     def initUI(self):
         self.tab = swing.JPanel()
@@ -40,8 +50,10 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
         boxHorizontal = swing.Box.createHorizontalBox()
         textLabel = swing.JLabel("Save location: ")
         boxHorizontal.add(textLabel)
+        boxVertical.add(boxHorizontal)
 
         # Create save location input
+        boxHorizontal = swing.Box.createHorizontalBox()
         self.saveLocationInput = swing.JTextField(100)
         boxHorizontal.add(self.saveLocationInput)
         boxVertical.add(boxHorizontal)
@@ -50,10 +62,12 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
         boxHorizontal = swing.Box.createHorizontalBox()
         textLabel = swing.JLabel("MIME Types - comma separated: ")
         boxHorizontal.add(textLabel)
+        boxVertical.add(boxHorizontal)
 
         # Create MIME type input
-        self.mimeTypeInput = swing.JTextField(100)
-        boxHorizontal.add(self.mimeTypeInput)
+        boxHorizontal = swing.Box.createHorizontalBox()
+        self.mimeTypesInput = swing.JTextField(100)
+        boxHorizontal.add(self.mimeTypesInput)
         boxVertical.add(boxHorizontal)
 
         # Save button
@@ -61,6 +75,24 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
         saveButton = swing.JButton("Save")
         saveButton.addActionListener(self.saveData)
         boxHorizontal.add(saveButton)
+        boxVertical.add(boxHorizontal)
+
+        # Output pane label
+        boxHorizontal = swing.Box.createHorizontalBox()
+        textLabel = swing.JLabel("Output")
+        boxHorizontal.add(textLabel)
+        boxVertical.add(boxHorizontal)
+
+        # Output pane
+        boxHorizontal = swing.Box.createHorizontalBox()
+        self.outputBox = swing.JTextArea("", 10, 10)
+        self.outputBox.setEditable(False)
+        sp = swing.JScrollPane(self.outputBox)
+        boxVertical.add(sp)
+        # This is an attempt at using a Burp ITextEditor, but 
+        # I need to work out how to add it to the box
+        # self.outputBox = self._callbacks.createTextEditor()
+        # boxVertical.add(self.outputBox)
 
         boxVertical.add(boxHorizontal)
 
@@ -97,7 +129,7 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
 
         # Build list to compare against
         # Need to load this from storage as well
-        self.imageMimeTypes = ["JPEG", "PNG", "GIF"]
+        self.fileMimeTypes = ["JPEG", "PNG", "GIF"]
 
         # Load the location from Burp storage
         self.filePathBase = self._callbacks.loadExtensionSetting(self.FILELOCATION)
@@ -110,9 +142,22 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
 
         self._stdout.println("Saving files to: " + self.filePathBase)
 
+        loadedMimeTypes = self._callbacks.loadExtensionSetting(self.MIMETYPES)
+        if loadedMimeTypes is None:
+            self.mimeTypesInput = ["JPEG", "PNG", "GIF"]
+        else:
+            # should probably check to see what happens if loadedMimeTypes does
+            # not eval correctly.
+            self.mimeTypesInput = literal_eval(loadedMimeTypes)
+            self._stdout.println("loaded: " + loadedMimeTypes)
+
+        mimeTypesAsString = ','.join(self.mimeTypesInput)
+        self._stdout.println("parsed: " + mimeTypesAsString)
+
         self.initUI()
         self._callbacks.addSuiteTab(self)
         self.saveLocationInput.setText(self.filePathBase)
+        self.mimeTypesInput.setText(mimeTypesAsString)
 
         return
 
@@ -121,16 +166,16 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
             response = messageInfo.getResponse()
             responseInfo = self._helpers.analyzeResponse(response)
 
-            request = messageInfo.getRequest()
-            self._stdout.println(type(request))
+            # request = messageInfo.getRequest()
+            #    self._stdout.println(type(request))
 
-            #for header in request:
-          #      self._stdout.println(header)
-
-            #for header in request.getHeaders():
+            # for header in request:
             #    self._stdout.println(header)
-#
- #           self._stdout.println(request)
+
+            # for header in request.getHeaders():
+            #    self._stdout.println(header)
+            #
+            # self._stdout.println(request)
 
             # Get MIME types
             inferredMime = responseInfo.getInferredMimeType()
@@ -141,7 +186,7 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
             # self._stdout.println(bodyOffset)
             # Build image request body
             imgData = response[bodyOffset:]
-            self._stdout.println(imgData)
+            # self._stdout.println(imgData)
 
             self._stdout.println("Stated MIME Type: " + statedMime)
             self._stdout.println("Inferred MIME Type: " + inferredMime)
@@ -150,12 +195,14 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
             # the same name and be overwritten so need to add something extra to 
             # the name to ensure it is unique.
 
-            if (statedMime in self.imageMimeTypes) or (inferredMime in self.imageMimeTypes):
+            if (statedMime in self.fileMimeTypes) or (inferredMime in self.fileMimeTypes):
                 # Build file path
-                fileName = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+                fileName = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
                 fileExtension = "." + inferredMime.lower()
                 fullFilename = self.filePathBase + fileName + fileExtension
-                self._stdout.println("Writing to file: " + fullFilename)
+                self.outputBox.append("Writing to file: " + fullFilename + "\n")
+
+                self.outputBox.setCaretPosition(self.outputBox.getDocument().getLength());
                 # Write to file
                 f = open(fullFilename, "wb")
                 f.write(imgData)
