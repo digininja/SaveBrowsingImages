@@ -85,15 +85,11 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
 
         # Output pane
         boxHorizontal = swing.Box.createHorizontalBox()
-        self.outputBox = swing.JTextArea("", 10, 10)
-        self.outputBox.setEditable(False)
-        sp = swing.JScrollPane(self.outputBox)
-        boxVertical.add(sp)
         # This is an attempt at using a Burp ITextEditor, but 
         # I need to work out how to add it to the box
-        # self.outputBox = self._callbacks.createTextEditor()
-        # boxVertical.add(self.outputBox)
-
+        self.outputBox = self._callbacks.createTextEditor()
+        self.outputBox.setEditable(False)
+        boxHorizontal.add(self.outputBox.getComponent())
         boxVertical.add(boxHorizontal)
 
         # Add the text label and area to the text panel
@@ -202,6 +198,7 @@ class BurpExtender(IBurpExtender, IProxyListener, IHttpListener, IResponseInfo, 
                 fullFilename = self.filePathBase + fileName + fileExtension
                 self.outputBox.append("Writing to file: " + fullFilename + "\n")
 
+                # This forces the textarea to autoscroll after the update
                 self.outputBox.setCaretPosition(self.outputBox.getDocument().getLength());
                 # Write to file
                 f = open(fullFilename, "wb")
